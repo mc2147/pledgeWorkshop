@@ -5,7 +5,41 @@ Promises Workshop: build the pledge.js ES6-style promise library
 // YOUR CODE HERE:
 
 
+function $Promise (executor) {
+	this._value;
+	this._state = 'pending';
+	this.resolved = false;
+	if (typeof executor != 'function') {
+		throw new TypeError(
+			"executor " + " cannot be null for " + " function"
+		)
+		// .catch(e) {
+		// 	console.log(e);
+		// };
+	}
+	// this.executor = executor;
+	console.log("this 22");
+	console.log(this);
+	executor(
+		this._internalResolve.bind(this), 
+		this._internalReject.bind(this));
+}
 
+$Promise.prototype._internalResolve = function( data ) {
+	if (this._state == 'pending') {
+		this._value = data;		
+		this._state = 'fulfilled';
+	}
+	// this.executor();
+}
+
+$Promise.prototype._internalReject = function(data) {
+	if (this._state == 'pending') {
+		this._value = data;		
+		this._state = 'rejected';
+	}
+	// this.executor();
+}
 
 
 
