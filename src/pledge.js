@@ -9,6 +9,7 @@ function $Promise (executor) {
 	this._value;
 	this._state = 'pending';
 	this.resolved = false;
+	this._handlerGroups = [];
 	if (typeof executor != 'function') {
 		throw new TypeError(
 			"executor " + " cannot be null for " + " function"
@@ -19,7 +20,7 @@ function $Promise (executor) {
 	}
 	// this.executor = executor;
 	console.log("this 22");
-	console.log(this);
+	console.log(this);	
 	executor(
 		this._internalResolve.bind(this), 
 		this._internalReject.bind(this));
@@ -30,6 +31,9 @@ $Promise.prototype._internalResolve = function( data ) {
 		this._value = data;		
 		this._state = 'fulfilled';
 	}
+	for (var i = 0; i < this._handlerGroups.length; i++) {
+		this._handlerGroups[i].successCb(this._value);
+	}
 	// this.executor();
 }
 
@@ -39,6 +43,25 @@ $Promise.prototype._internalReject = function(data) {
 		this._state = 'rejected';
 	}
 	// this.executor();
+}
+
+$Promise.prototype.then = function(success, error) {
+	// var L = this._handlerGroups.length;
+	var successInput = success;
+	var errorInput = error;
+	if (typeof success != 'function') {
+		successInput = false;
+	}	
+	else if (this._state == 'fulfilled') {
+		success(this._value);		
+	}
+	if (typeof error != 'function') {
+		errorInput = false;
+	}
+	this._handlerGroups.push({
+		successCb: successInput,
+		errorCb: errorInput
+	});	
 }
 
 
