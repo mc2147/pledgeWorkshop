@@ -25,6 +25,7 @@ function $Promise (executor) {
 }
 
 $Promise.prototype._internalResolve = function( data ) {
+	console.log(data);
 	if (this._state == 'pending') {
 		this._value = data;		
 		this._state = 'fulfilled';
@@ -33,7 +34,7 @@ $Promise.prototype._internalResolve = function( data ) {
 		var pB = this._handlerGroups[0].downstreamPromise;
 		if (!this._handlerGroups[0].successCb) {
 			this._handlerGroups.shift();			
-			pB._internalResolve(data);
+			pB._internalResolve(this._value);
 		}
 		else {
 			console.log("39");
@@ -45,7 +46,12 @@ $Promise.prototype._internalResolve = function( data ) {
 			}
 			console.log("40");
 			this._handlerGroups.shift();
-			pB._internalResolve(successInput);
+			if(successInput instanceof $Promise){
+				console.log("HERE", this);
+				successInput.then(pB._internalResolve(successInput).bind(pB), pB._internalReject(successInput).bind(pB));
+			} else {
+			 pB._internalResolve(successInput);
+			}
 		} 
 	}
 }
@@ -58,12 +64,13 @@ $Promise.prototype._internalReject = function(data) {
 	while (this._handlerGroups.length) {
 		var pB = this._handlerGroups[0].downstreamPromise;
 		if (!this._handlerGroups[0].errorCb) {
-			pB._internalReject(data);
+			pB._internalReject(this._value);
 			this._handlerGroups.shift();			
 		}
 		else {
 			try {
-				var errorInput = this._handlerGroups[0].errorCb(this._value);
+				var errorInput = this._handlerGroups[0]
+				.errorCb(this._value);
 			} catch (error) {
 				pB._internalReject(error);
 			}
