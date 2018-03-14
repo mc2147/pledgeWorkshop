@@ -18,9 +18,7 @@ function $Promise (executor) {
 		// 	console.log(e);
 		// };
 	}
-	// this.executor = executor;
-	console.log("this 22");
-	console.log(this);	
+	// this.executor = executor;	
 	executor(
 		this._internalResolve.bind(this), 
 		this._internalReject.bind(this));
@@ -31,8 +29,9 @@ $Promise.prototype._internalResolve = function( data ) {
 		this._value = data;		
 		this._state = 'fulfilled';
 	}
-	for (var i = 0; i < this._handlerGroups.length; i++) {
-		this._handlerGroups[i].successCb(this._value);
+	while (this._handlerGroups.length) {
+		this._handlerGroups[0].successCb(this._value);
+		this._handlerGroups.shift();
 	}
 	// this.executor();
 }
@@ -42,7 +41,9 @@ $Promise.prototype._internalReject = function(data) {
 		this._value = data;		
 		this._state = 'rejected';
 	}
-	// this.executor();
+	for (var i = 0; i < this._handlerGroups.length; i++) {
+		this._handlerGroups[i].errorCb(this._value);
+	}
 }
 
 $Promise.prototype.then = function(success, error) {
@@ -52,16 +53,22 @@ $Promise.prototype.then = function(success, error) {
 	if (typeof success != 'function') {
 		successInput = false;
 	}	
-	else if (this._state == 'fulfilled') {
+	else if (this._state === 'fulfilled') {
 		success(this._value);		
 	}
 	if (typeof error != 'function') {
 		errorInput = false;
+	} else if(this._state === 'rejected'){
+		error(this._value)
 	}
 	this._handlerGroups.push({
 		successCb: successInput,
 		errorCb: errorInput
 	});	
+}
+
+$Promise.prototype.catch = function (func) {
+	this.then(null, func);
 }
 
 
