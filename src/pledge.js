@@ -18,7 +18,7 @@ function $Promise (executor) {
 		// 	console.log(e);
 		// };
 	}
-	// this.executor = executor;	
+	this.executor = executor;	
 	executor(
 		this._internalResolve.bind(this), 
 		this._internalReject.bind(this));
@@ -30,10 +30,24 @@ $Promise.prototype._internalResolve = function( data ) {
 		this._state = 'fulfilled';
 	}
 	while (this._handlerGroups.length) {
-		this._handlerGroups[0].successCb(this._value);
-		this._handlerGroups.shift();
+		var pB = this._handlerGroups[0].downstreamPromise;
+		if (!this._handlerGroups[0].successCb) {
+			this._handlerGroups.shift();			
+			pB._internalResolve(data);
+		}
+		else {
+			console.log("39");
+			try {
+				var successInput = this
+				._handlerGroups[0].successCb(this._value);					
+			} catch (error) {
+				pB._internalReject(error);
+			}
+			console.log("40");
+			this._handlerGroups.shift();
+			pB._internalResolve(successInput);
+		} 
 	}
-	// this.executor();
 }
 
 $Promise.prototype._internalReject = function(data) {
@@ -41,34 +55,59 @@ $Promise.prototype._internalReject = function(data) {
 		this._value = data;		
 		this._state = 'rejected';
 	}
-	for (var i = 0; i < this._handlerGroups.length; i++) {
-		this._handlerGroups[i].errorCb(this._value);
+	while (this._handlerGroups.length) {
+		var pB = this._handlerGroups[0].downstreamPromise;
+		if (!this._handlerGroups[0].errorCb) {
+			pB._internalReject(data);
+			this._handlerGroups.shift();			
+		}
+		else {
+			try {
+				var errorInput = this._handlerGroups[0].errorCb(this._value);
+			} catch (error) {
+				pB._internalReject(error);
+			}
+			this._handlerGroups.shift();
+			pB._internalResolve(errorInput);
+		} 
 	}
+	// for (var i = 0; i < this._handlerGroups.length; i++) {
+	// 	this._handlerGroups[i].errorCb(this._value);
+	// }
 }
 
 $Promise.prototype.then = function(success, error) {
 	// var L = this._handlerGroups.length;
+	console.log("line 70 test");
+	console.log(success);
 	var successInput = success;
 	var errorInput = error;
 	if (typeof success != 'function') {
 		successInput = false;
+		console.log("line 76");		
 	}	
 	else if (this._state === 'fulfilled') {
-		success(this._value);		
+		console.log("line 78");		
+		success(this._value);				
 	}
 	if (typeof error != 'function') {
 		errorInput = false;
+		console.log("line 85");		
 	} else if(this._state === 'rejected'){
 		error(this._value)
+		console.log("line 88");		
 	}
 	this._handlerGroups.push({
 		successCb: successInput,
-		errorCb: errorInput
+		errorCb: errorInput,
+		downstreamPromise: 
+		new $Promise(this.executor),
 	});	
+	return this._handlerGroups[0].downstreamPromise;
 }
 
 $Promise.prototype.catch = function (func) {
-	this.then(null, func);
+	return this.then(null, func);
 }
 
 
